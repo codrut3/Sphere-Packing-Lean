@@ -73,7 +73,11 @@ public import SpherePacking.ModularForms.SlashActionAuxil
 public import SpherePacking.ModularForms.exp_lems
 public import SpherePacking.ModularForms.tsumderivWithin
 public import SpherePacking.Tactic.NormNumI
+public import SpherePacking.Tactic.Positivity
+public import SpherePacking.Tactic.Positivity.Complex
+public import SpherePacking.Tactic.Positivity.UpperHalfPlane
 public import SpherePacking.Tactic.TendstoCont
 public import SpherePacking.Tactic.TendstoContAttr
 public import SpherePacking.Tactic.Test.NormNumI
+public import SpherePacking.Tactic.Test.Positivity
 public import SpherePacking.Tactic.Test.TendstoCont

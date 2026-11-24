@@ -57,15 +57,8 @@ lemma I₆'_bounding_aux_2 (r : ℝ) : ∃ C₀ > 0, ∀ t ∈ Ici (1 : ℝ),
   rw [I₆'_bounding_aux_1 r t ht]
   rw [mem_Ici] at ht
   gcongr
-  have him : (I * t).im = t := by simp
-  have hpos : 0 < (I * t).im := by rw [him]; linarith
-  have h_half_lt_one : 1 / 2 < (I * t).im := by rw [him]; linarith
-  let z : ℍ := ⟨I * t, hpos⟩
-  have him' : z.im = t := him
-  specialize hC₀ z h_half_lt_one
-  simp only [φ₀'', hpos, ↓reduceDIte]
-  simp only [him'] at hC₀
-  exact hC₀
+  rw [φ₀''_def (by positivity)]
+  simpa [UpperHalfPlane.im] using hC₀ ⟨I * t, by positivity⟩ (by simp [UpperHalfPlane.im]; linarith)
 
 end Bounding_Integrand
 

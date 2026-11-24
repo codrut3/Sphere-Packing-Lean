@@ -416,7 +416,7 @@ theorem F_functional_equation (z : ℍ) :
       - 36 * π ^ (-2 : ℤ) * z ^ 10 * (E₄.toFun z) ^ 2 := by
   simp only [F, F₁, Pi.pow_apply, Pi.mul_apply, Pi.sub_apply, ModularForm.toFun_eq_coe,
     E₂_S_transform, E₄_S_transform, E₆_S_transform, zpow_neg, zpow_one]
-  field_simp [ne_zero z]
+  field_simp
   linear_combination (12 * I * (z : ℂ) * π * (E₂ z * E₄ z - E₆ z) * E₄ z + 36 * E₄ z ^ 2) * I_sq
 
 /-- Functional equation of `F` restricted to the imaginary axis. -/

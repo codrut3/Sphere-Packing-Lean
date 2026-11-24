@@ -2,6 +2,7 @@ module
 
 public import Mathlib.NumberTheory.ModularForms.EisensteinSeries.E2.Transform
 public import SpherePacking.ModularForms.SlashActionAuxil
+public import SpherePacking.Tactic.Positivity
 
 /-!
 # The Eisenstein Series `E₂`
@@ -36,14 +37,11 @@ lemma E₂_transform (z : ℍ) : (E₂ ∣[(2 : ℤ)] ModularGroup.S) z =
       E₂ z - (1 / (2 * riemannZeta 2)) * (2 * π * Complex.I / z) := by
     simpa [EisensteinSeries.D2_S, smul_eq_mul] using h
   rw [riemannZeta_two] at h'
-  have hpi : (π : ℂ) ≠ 0 := by simp
-  have hI : (Complex.I : ℂ) ≠ 0 := Complex.I_ne_zero
-  have hz : (z : ℂ) ≠ 0 := ne_zero z
   calc
     (E₂ ∣[(2 : ℤ)] ModularGroup.S) z =
         E₂ z - 1 / (2 * (π ^ 2 / (6 : ℂ))) * (2 * π * Complex.I / z) := h'
     _ = E₂ z + 6 / (π * Complex.I * z) := by
-      field_simp [hpi, hI, hz]
+      field_simp
       ring_nf
       simp [Complex.I_sq, add_comm]
 
@@ -52,10 +50,8 @@ lemma E₂_S_transform (z : ℍ) :
     E₂ (ModularGroup.S • z) = z ^ 2 * (E₂ z + 6 / (π * Complex.I * z)) := by
   have h := E₂_transform z
   rw [SL_slash_apply, ModularGroup.denom_S, zpow_neg, zpow_two] at h
-  have hz2 : (z : ℂ) * (z : ℂ) ≠ 0 := mul_ne_zero (ne_zero z) (ne_zero z)
-  rw [sq, mul_comm]
-  -- `only` is required here; without it simp rewrites the congrArg term structure
-  simpa only [mul_assoc, inv_mul_cancel₀ hz2, mul_one] using congrArg (· * ((z : ℂ) * (z : ℂ))) h
+  field_simp at h ⊢
+  linear_combination h
 
 lemma E₂_eq (z : UpperHalfPlane) : E₂ z =
     1 - 24 * ∑' n : ℕ+, ↑n * cexp (2 * π * Complex.I * n * z) /
@@ -66,7 +62,6 @@ lemma E₂_eq (z : UpperHalfPlane) : E₂ z =
   rw [mul_sub]
   congr 1
   · rw [riemannZeta_two]
-    have hpi : (π : ℂ) ≠ 0 := by simp
     field_simp
   · rw [← mul_assoc]
     congr 1

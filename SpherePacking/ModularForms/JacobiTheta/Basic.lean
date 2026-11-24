@@ -149,7 +149,7 @@ lemma H₂_S_action : (H₂ ∣[(2 : ℤ)] S) = -H₄ := by
 
 lemma H₃_S_action : (H₃ ∣[(2 : ℤ)] S) = -H₃ := by
   ext x
-  have hx' : (x : ℂ) ≠ 0 := by obtain ⟨x, hx⟩ := x; change x ≠ 0; simp [Complex.ext_iff, hx.ne.symm]
+  have hx' : (x : ℂ) ≠ 0 := by positivity
   have := jacobiTheta₂_functional_equation 0
   simp [-one_div] at this
   simp [modular_slash_S_apply, Pi.neg_apply, H₃, Θ₃_as_jacobiTheta₂]
@@ -167,13 +167,13 @@ lemma H₄_S_action : (H₄ ∣[(2 : ℤ)] S) = - H₂ := by
 lemma H₂_S_action' (z : ℍ) : H₂ (S • z) = - z ^ 2 * H₄ z := by
   have h := congrFun H₂_S_action z
   simp only [SL_slash_apply, denom_S, _root_.zpow_neg, Pi.neg_apply] at h
-  field_simp [ne_zero] at h ⊢
+  field_simp at h ⊢
   exact h
 
 lemma H₄_S_action' (z : ℍ) : H₄ (S • z) = - z ^ 2 * H₂ z := by
   have h := congrFun H₄_S_action z
   simp only [SL_slash_apply, denom_S, _root_.zpow_neg, Pi.neg_apply] at h
-  field_simp [ne_zero z] at h ⊢
+  field_simp at h ⊢
   exact h
 
 lemma H₂_S_inv_action : (H₂ ∣[(2 : ℤ)] S⁻¹) = -H₄ := by
@@ -805,7 +805,6 @@ theorem H₄_imag_axis_pos : ResToImagAxis.Pos H₄ := by
       norm_num
     -- Simplify: (1/t)^(-2) = t^2
     have h1t_neg2 : ((1 / t : ℝ) : ℂ) ^ (-2 : ℤ) = (t : ℂ) ^ 2 := by
-      have ht_ne : (t : ℂ) ≠ 0 := ofReal_ne_zero.mpr (ne_of_gt ht)
       simp only [one_div, ofReal_inv, _root_.zpow_neg]
       -- Goal: ((↑t)⁻¹ ^ 2)⁻¹ = ↑t ^ 2
       field_simp

@@ -11,6 +11,7 @@ public import Mathlib.Analysis.Complex.UpperHalfPlane.MoebiusAction
 public import Mathlib.Analysis.RCLike.Basic
 public import Mathlib.Basic.Complex.Basic
 public import Mathlib.Analysis.Complex.UpperHalfPlane.Basic
+public import SpherePacking.Tactic.Positivity
 
 /-!
 # Integral Parametrisations
@@ -61,34 +62,27 @@ section UpperHalfPlane
 open scoped UpperHalfPlane
 
 lemma im_z₁'_pos {t : ℝ} (ht : t ∈ Ioc 0 1) : 0 < (z₁' t).im := by
-  have ht' : t ∈ Icc 0 1 := mem_Icc_of_Ioc ht
-  simp only [z₁', IccExtend_of_mem zero_le_one z₁ ht', z₁, add_im, neg_im, one_im, neg_zero, mul_im,
-    I_re, ofReal_im, mul_zero, I_im, ofReal_re, one_mul, zero_add]
-  exact ht.1
+  rw [z₁', IccExtend_of_mem zero_le_one z₁ (mem_Icc_of_Ioc ht), z₁]
+  have := ht.1; positivity
 
 lemma im_z₂'_pos {t : ℝ} (ht : t ∈ Icc 0 1) : 0 < (z₂' t).im := by
   simp [z₂', IccExtend_of_mem zero_le_one z₂ ht, z₂]
 
 lemma im_z₃'_pos {t : ℝ} (ht : t ∈ Ioc 0 1) : 0 < (z₃' t).im := by
-  have ht' : t ∈ Icc 0 1 := mem_Icc_of_Ioc ht
-  simp only [z₃', IccExtend_of_mem zero_le_one z₃ ht', z₃, add_im, one_im, mul_im, I_re, ofReal_im,
-    mul_zero, I_im, ofReal_re, one_mul, zero_add]
-  exact ht.1
+  rw [z₃', IccExtend_of_mem zero_le_one z₃ (mem_Icc_of_Ioc ht), z₃]
+  have := ht.1; positivity
 
 lemma im_z₄'_pos {t : ℝ} (ht : t ∈ Icc 0 1) : 0 < (z₄' t).im := by
   simp [z₄', IccExtend_of_mem zero_le_one z₄ ht, z₄]
 
 lemma im_z₅'_pos {t : ℝ} (ht : t ∈ Ioc 0 1) : 0 < (z₅' t).im := by
-  have ht' : t ∈ Icc 0 1 := mem_Icc_of_Ioc ht
-  simp only [z₅', IccExtend_of_mem zero_le_one z₅ ht', z₅, mul_im, I_re, ofReal_im, mul_zero, I_im,
-    ofReal_re, one_mul, zero_add]
-  exact ht.1
+  rw [z₅', IccExtend_of_mem zero_le_one z₅ (mem_Icc_of_Ioc ht), z₅]
+  have := ht.1; positivity
 
 lemma im_z₆'_pos {t : ℝ} (ht : t ∈ Ici (1 : ℝ)) : 0 < (z₆' t).im := by
-  simp only [z₆', IciExtend_of_mem z₆ ht, z₆, mul_im, I_re, ofReal_im, mul_zero, I_im, ofReal_re,
-    one_mul, zero_add]
+  rw [z₆', IciExtend_of_mem z₆ ht, z₆]
   rw [mem_Ici] at ht
-  linarith
+  positivity
 
 lemma z₁'_mem_upperHalfPlane_set {t : ℝ} (ht : t ∈ Ioc (0 : ℝ) 1) : z₁' t ∈ ℍ₀ := im_z₁'_pos ht
 
@@ -175,9 +169,7 @@ lemma neg_inv_one_add_eq_ST_coe (z : ℍ) :
   rw [specialLinearGroup_apply]
   simp_all
 
-lemma neg_inv_one_add_mem (z : ℍ) : 0 < (-1 / ((z : ℂ) + 1)).im := by
-  rw [neg_inv_one_add_eq_ST_coe, coe_im]
-  exact ((S * T) • z).2
+lemma neg_inv_one_add_mem (z : ℍ) : 0 < (-1 / ((z : ℂ) + 1)).im := by positivity
 
 lemma neg_inv_one_add_eq_ST (z : ℍ) :
     ⟨-1 / ((z : ℂ) + 1), neg_inv_one_add_mem z⟩ = (S * T) • z := by
@@ -189,9 +181,7 @@ lemma neg_inv_eq_S_coe (z : ℍ) :
   rw [specialLinearGroup_apply]
   simp_all
 
-lemma neg_inv_mem (z : ℍ) : 0 < (-1 / (z : ℂ)).im := by
-  rw [neg_inv_eq_S_coe, coe_im]
-  exact (S • z).2
+lemma neg_inv_mem (z : ℍ) : 0 < (-1 / (z : ℂ)).im := by positivity
 
 lemma neg_inv_eq_S (z : ℍ) :
     ⟨-1 / (z : ℂ), neg_inv_mem z⟩ = S • z := by

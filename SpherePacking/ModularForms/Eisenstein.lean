@@ -72,7 +72,7 @@ lemma E₄_S_transform (z : ℍ) : E₄ (ModularGroup.S • z) = z ^ (4 : ℕ) *
       (Subgroup.mem_map.mpr ⟨_, CongruenceSubgroup.mem_Gamma_one _, rfl⟩)) z
   rw [SL_slash_apply] at h
   simp only [ModularGroup.denom_S, zpow_neg, ModularForm.toFun_eq_coe] at h
-  field_simp [ne_zero z] at h
+  field_simp at h
   exact h
 
 /-- E₆ transforms under S as: E₆(-1/z) = z⁶ · E₆(z) -/
@@ -82,7 +82,7 @@ lemma E₆_S_transform (z : ℍ) : E₆ (ModularGroup.S • z) = z ^ (6 : ℕ) *
       (Subgroup.mem_map.mpr ⟨_, CongruenceSubgroup.mem_Gamma_one _, rfl⟩)) z
   rw [SL_slash_apply] at h
   simp only [ModularGroup.denom_S, zpow_neg, ModularForm.toFun_eq_coe] at h
-  field_simp [ne_zero z] at h
+  field_simp at h
   exact h
 
 /-! ## `q`-expansion coefficients and non-vanishing -/
@@ -178,11 +178,9 @@ lemma sigma_qexp_term_re_pos (k : ℕ) (t : ℝ) (ht : 0 < t) (n : ℕ+) :
     0 < (n * σ k n *
       cexp (2 * π * Complex.I * n * (⟨Complex.I * t, by simp [ht]⟩ : ℍ))).re := by
   rw [mul_right_comm (2 * π * Complex.I), exp_imag_axis_arg t ht n]
-  simp only [Complex.mul_re, Complex.exp_ofReal_re, Complex.exp_ofReal_im, mul_zero, sub_zero,
-    Complex.natCast_re, Complex.natCast_im]
-  refine mul_pos (mul_pos ?_ ?_) (Real.exp_pos _)
-  · exact_mod_cast n.pos
-  · exact_mod_cast ArithmeticFunction.sigma_pos k n n.ne_zero
+  have := n.pos
+  have := ArithmeticFunction.sigma_pos k n n.ne_zero
+  positivity
 
 /-- A differentiated `σ_k` `q`-series has positive real part at `z = it` for `t > 0`. -/
 lemma sigma_qexp_tsum_re_pos (k : ℕ) (t : ℝ) (ht : 0 < t) :

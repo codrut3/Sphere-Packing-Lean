@@ -6,6 +6,7 @@ public import Mathlib.NumberTheory.ModularForms.QExpansion
 public import SpherePacking.ForMathlib.AtImInfty
 public import SpherePacking.ForMathlib.QExpansionBounds
 public import SpherePacking.ModularForms.SlashActionAuxil
+public import SpherePacking.Tactic.Positivity
 
 /-!
 # Restriction to the Imaginary Axis
@@ -72,7 +73,7 @@ theorem ResToImagAxis.Differentiable (F : ℍ → ℂ) (hF : MDiff F) (t : ℝ)
     let g : ℝ → ℂ := fun s => Complex.I * (s : ℂ)
     have hF_diff : DifferentiableAt ℂ (F ∘ ofComplex) (g t) := by
       simpa [g] using UpperHalfPlane.mdifferentiableAt_iff.mp
-        (hF ⟨Complex.I * t, by norm_num [Complex.I_re, ht]⟩)
+        (hF ⟨Complex.I * t, by positivity⟩)
     have hg : DifferentiableAt ℝ g t := by
       simpa [g] using
         (Complex.ofRealCLM.hasFDerivAt (x := t)).differentiableAt.const_mul Complex.I
@@ -87,8 +88,8 @@ Restriction and slash action under S: $(F |_k S) (it) = (it)^{-k} * F(it)$
 -/
 theorem ResToImagAxis.SlashActionS (F : ℍ → ℂ) (k : ℤ) {t : ℝ} (ht : 0 < t) :
     (F ∣[k] S).resToImagAxis t = (Complex.I) ^ (-k) * t ^ (-k) * F.resToImagAxis (1 / t) := by
-  set z : ℍ := ⟨I * t, by simp [ht]⟩ with hzdef
-  set z' : ℍ := ⟨I * (1 / t : ℝ), by simpa [one_div_pos.2 ht]⟩ with hz'def
+  set z : ℍ := ⟨I * t, by positivity⟩ with hzdef
+  set z' : ℍ := ⟨I * (1 / t : ℝ), by positivity⟩ with hz'def
   have h : mk (-z)⁻¹ z.im_inv_neg_coe_pos = z' :=
     UpperHalfPlane.ext (by simp [hzdef, hz'def, mul_comm])
   simpa [ResToImagAxis, ht, hz'def] using (by
@@ -115,10 +116,8 @@ theorem ResToImagAxis.one_div_eq_S_smul (F : ℍ → ℂ) {t : ℝ} (ht : 0 < t)
     apply UpperHalfPlane.ext
     simp only [UpperHalfPlane.modular_S_smul, hz_def, div_eq_mul_inv]
     change (-(I * ↑t))⁻¹ = I * (↑t)⁻¹
-    have hne : (I : ℂ) * t ≠ 0 := mul_ne_zero I_ne_zero (ofReal_ne_zero.mpr ht.ne')
-    field_simp [hne, I_sq]
-    ring_nf
-    simp only [I_sq, mul_neg, mul_one]
+    field_simp
+    simp [I_sq]
   simp only [Function.resToImagAxis, ResToImagAxis, ht_inv, ↓reduceDIte, hS_z]
   congr 1; apply UpperHalfPlane.ext
   simp only [div_eq_mul_inv, mul_comm I, one_mul, ofReal_inv]

@@ -102,7 +102,7 @@ theorem D_qexp_term (n : ℤ) (a : ℂ) (z : ℍ) :
     filter_upwards [isOpen_upperHalfPlaneSet.mem_nhds z.2] with w hw
     simp only [Function.comp_apply, ofComplex_apply_of_im_pos hw, UpperHalfPlane.coe_mk]
   rw [h_agree.deriv_eq, (hasDerivAt_qexp a n z).deriv]
-  field_simp [two_pi_I_ne_zero]
+  field_simp
 
 /--
 **Lemma 6.45 (Blueprint)**: $D$ commutes with tsum for $q$-series.
@@ -173,7 +173,7 @@ theorem D_qexp_tsum (a : ℕ → ℂ) (z : ℍ)
       {w : ℂ | 0 < w.im} z = a n * (2 * π * I * n) * cexp (2 * π * I * n * z) :=
     fun n => derivWithin_qexp _ _ _ z.2
   simp_rw [h_deriv_simp, ← tsum_mul_left]
-  congr 1; funext n; field_simp [two_pi_I_ne_zero]
+  congr 1; funext n; field_simp
 
 /-- For `f 0 = 0`, the `ℕ+`- and `ℕ`-indexed sums of `f` agree. Unlike mathlib's
 `tsum_zero_pnat_eq_tsum_nat`, this needs no summability hypothesis (both sides are `0` in the

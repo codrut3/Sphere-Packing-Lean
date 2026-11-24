@@ -60,9 +60,6 @@ theorem φ₀_periodic (z : ℍ) : φ₀ ((1 : ℝ) +ᵥ z) = φ₀ z := by
 theorem φ₀_S_transform (z : ℍ) :
     φ₀ (ModularGroup.S • z) = φ₀ z - (12 * Complex.I) / (π * z) * φ₂' z
                              - 36 / (π ^ 2 * z ^ 2) * φ₄' z := by
-  have hz : (z : ℂ) ≠ 0 := ne_zero z
-  have hπ : (π : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr Real.pi_ne_zero
-  have hI : Complex.I ≠ 0 := Complex.I_ne_zero
   unfold φ₀ φ₂' φ₄'
   rw [E₂_S_transform, E₄_S_transform, E₆_S_transform, Δ_S_transform]
   -- Let A = E₂ z * E₄ z - E₆ z (the key expression)
@@ -91,7 +88,6 @@ theorem φ₀_S_transform (z : ℍ) :
   have h_expand : (A + 6 * E₄ z / (π * Complex.I * z)) ^ 2 / Δ z =
                   A ^ 2 / Δ z + 12 * A * E₄ z / (π * Complex.I * z * Δ z) +
                   36 * (E₄ z) ^ 2 / (π ^ 2 * Complex.I ^ 2 * z ^ 2 * Δ z) := by
-    have hπIz : π * Complex.I * z ≠ 0 := mul_ne_zero (mul_ne_zero hπ hI) hz
     field_simp; ring
   rw [h_expand, hI2]
   -- Transform 12/(πIz) to -12I/(πz) using I⁻¹ = -I

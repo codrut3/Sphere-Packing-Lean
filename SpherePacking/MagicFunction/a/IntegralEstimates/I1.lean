@@ -160,17 +160,8 @@ lemma I₁'_bounding_aux_2 (r : ℝ) : ∃ C₀ > 0, ∀ x ∈ Ici 1,
   rw [mem_Ici] at hs
   apply (I₁'_bounding_aux_1 r s hs).trans
   gcongr
-  have him : (I * s).im = s := by simp
-  have hpos : 0 < s := by positivity
-  have hpos' : 0 < (I * ↑s).im := by rw [him]; exact hpos
-  let z : ℍ := ⟨I * s, hpos'⟩
-  have him' : z.im = s := by simp [z, him, UpperHalfPlane.im]
-  have him'_gt_half : 1 / 2 < z.im := by rw [him']; linarith
-  specialize hC₀ z him'_gt_half
-  simp only [z, him'] at hC₀
-  simp only [φ₀'', mul_im, I_re, ofReal_im, mul_zero, I_im, ofReal_re, one_mul, zero_add, hpos,
-    ↓reduceDIte]
-  exact hC₀
+  rw [φ₀''_def (by positivity)]
+  simpa [UpperHalfPlane.im] using hC₀ ⟨I * s, by positivity⟩ (by simp [UpperHalfPlane.im]; linarith)
 
 end Bounding_Integrand
 

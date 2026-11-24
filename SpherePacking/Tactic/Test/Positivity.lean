@@ -42,6 +42,11 @@ example {w : ℂ} (hw : 0 ≤ w.re) : 0 ≤ w⁻¹.re := by positivity
 example {w : ℂ} (hw : w.re ≠ 0) : w⁻¹.re ≠ 0 := by positivity
 example {w : ℂ} (hw : w.re ≠ 0) : (-w).re ≠ 0 := by positivity
 example {z : ℍ} : 0 < (-(I * (z : ℂ))).re := by positivity
+example {z : ℍ} : 0 < (-I * (z : ℂ)).re := by positivity
+example {z : ℍ} : 0 < ((z : ℂ) * -I).re := by positivity
+example {z : ℍ} : 0 < (I * -(z : ℂ)).re := by positivity
+example {z : ℍ} : 0 < (-(z : ℂ) * I).re := by positivity
+example {z : ℍ} : (2 * π * I * (z : ℂ)).re ≠ 0 := by positivity
 example {z : ℍ} : 0 < (-(2 * π * I * (z : ℂ))).re := by positivity
 example {z : ℍ} (n : ℕ) : 0 < (-(2 * π * I * ((n + 1 : ℕ) : ℂ) * (z : ℂ))).re := by positivity
 example {r : ℝ} {w : ℂ} (hr : 0 < r) (hw : 0 < w.re) : 0 < (r • w).re := by positivity
@@ -91,6 +96,9 @@ example (t : ℝ) : 0 < (-1 / ((t : ℂ) + I)).im := by positivity
 example (t : ℝ) : 0 < (-1 / (-(t : ℂ) + I)).im := by positivity
 example {t : ℝ} (ht : 0 < t) : 0 < (-1 / (I * (t : ℂ))).im := by positivity
 example (z : ℍ) : 0 < (z : ℂ).im := by positivity
+example (z : ℍ) : (z : ℂ)⁻¹.im ≠ 0 := by positivity
+example (z : ℍ) : (conj (z : ℂ)).im ≠ 0 := by positivity
+example (z : ℍ) : (-(z : ℂ)).im ≠ 0 := by positivity
 example {t : ℝ} (ht : 0 < t) : (⟨I * (t : ℂ), by positivity⟩ : ℍ).im = t := by simp
 
 end imag_part

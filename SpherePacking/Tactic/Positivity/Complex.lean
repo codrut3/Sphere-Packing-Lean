@@ -23,12 +23,12 @@ Registered extensions:
 * `Complex.ofReal` — nonzero when its real argument is nonzero, even without `ComplexOrder` open
   (complementing `Mathlib.Analysis.Complex.Order`, which requires `PartialOrder ℂ`);
 * `Complex.normSq` — always nonnegative, and strictly positive whenever its argument is nonzero;
-* `Complex.re` and `Complex.im` — structural recursion through `Complex.mk`, purely real
-  subexpressions (`ofReal`, `Nat`/`Int`/`Rat`/`NNRat` casts, numerals, and ring/field operations
-  on them), `Complex.I`, `+`, `-` (with real subtrahend for `im`), negation, conjugation (`conj` /
-  `star`), scalar multiplication (`ℝ`, `ℕ`, `ℤ`, `ℚ`, `ℚ≥0`), multiplication by `I` / `-I` or a
-  real expression, division by a real expression, inversion (`z⁻¹.re`, `(-z)⁻¹.im`, `(-z⁻¹).im`),
-  and real-numerator quotients (`(c / z).re`, `(-c / z).im`, `(-(c / z)).im`, `(c / -z).im`).
+* `Complex.re` and `Complex.im` — reduces complex expressions by one algebraic step to `ℝ` and
+  delegates back to `Positivity.core`, handling `Complex.mk`, purely real subexpressions (`ofReal`,
+  casts, numerals, and ring/field combinations), `Complex.I`, `+`, `-` (real subtrahend for `im`),
+  negation, conjugation (`conj` / `star`), scalar multiplication (`ℝ`, `ℕ`, `ℤ`, `ℚ`, `ℚ≥0`),
+  multiplication/division by real or purely imaginary factors, inversion (`z⁻¹`, `(-z)⁻¹`, `-z⁻¹`),
+  and real-numerator quotients (`c / z`, `-c / z`, `-(c / z)`, `c / -z`).
 
 Higher-level extensions (such as `UpperHalfPlane.coe`, `UpperHalfPlane.denom`, and `Complex.exp`)
 live in `SpherePacking.Tactic.Positivity.UpperHalfPlane` and compose automatically via
@@ -47,8 +47,10 @@ open scoped Complex.SMul
 
 section Lemmas
 
-lemma re_of_eq_ofReal {w : ℂ} {r : ℝ} (h : w = (r : ℂ)) : w.re = r := by rw [h, ofReal_re]
-lemma im_of_eq_ofReal_nonneg {w : ℂ} {r : ℝ} (h : w = (r : ℂ)) : 0 ≤ w.im := by rw [h, ofReal_im]
+lemma pos_of_eq_real {e r : ℝ} (h : e = r) (hr : 0 < r) : 0 < e := h ▸ hr
+lemma nonneg_of_eq_real {e r : ℝ} (h : e = r) (hr : 0 ≤ r) : 0 ≤ e := h ▸ hr
+lemma ne_zero_of_eq_real {e r : ℝ} (h : e = r) (hr : r ≠ 0) : e ≠ 0 := h ▸ hr
+lemma ne_zero_of_eq_neg {e r : ℝ} (h : e = -r) (hr : r ≠ 0) : e ≠ 0 := h ▸ neg_ne_zero.mpr hr
 
 lemma eq_ofReal_add {u v : ℂ} {a b : ℝ} (hu : u = (a : ℂ)) (hv : v = (b : ℂ)) :
     u + v = ((a + b : ℝ) : ℂ) := by rw [hu, hv, ofReal_add]
@@ -67,9 +69,6 @@ lemma eq_ofReal_pow {u : ℂ} {a : ℝ} (hu : u = (a : ℂ)) (n : ℕ) :
 lemma eq_ofReal_zpow {u : ℂ} {a : ℝ} (hu : u = (a : ℂ)) (k : ℤ) :
     u ^ k = ((a ^ k : ℝ) : ℂ) := by rw [hu, ofReal_zpow]
 
-lemma re_I_nonneg : 0 ≤ I.re := by simp
-lemma im_I_pos : 0 < I.im := by simp
-
 lemma eq_imag_I : I = Complex.mk 0 1 := rfl
 lemma eq_imag_mul_left {c w : ℂ} {r b : ℝ} (hc : c = (r : ℂ)) (hw : w = Complex.mk 0 b) :
     c * w = Complex.mk 0 (r * b) := by
@@ -81,38 +80,12 @@ lemma eq_imag_div {w c : ℂ} {b r : ℝ} (hw : w = Complex.mk 0 b) (hc : c = (r
     w / c = Complex.mk 0 (b / r) := by
   rw [hw, hc, div_ofReal]; simp
 
-lemma re_neg_mul_of_eq_imag_left {a b : ℂ} {r : ℝ} (ha : a = Complex.mk 0 r) :
-    (-(a * b)).re = r * b.im := by simp [ha]
-lemma re_neg_mul_of_eq_imag_right {a b : ℂ} {r : ℝ} (hb : b = Complex.mk 0 r) :
-    (-(a * b)).re = a.im * r := by simp [hb]
-lemma re_mul_of_eq_imag_left_ne_zero {a b : ℂ} {r : ℝ} (ha : a = Complex.mk 0 r)
-    (hr : r ≠ 0) (hb : b.im ≠ 0) : (a * b).re ≠ 0 := by
-  rw [ha]; simp [mul_ne_zero hr hb]
-lemma re_mul_of_eq_imag_right_ne_zero {a b : ℂ} {r : ℝ} (hb : b = Complex.mk 0 r)
-    (ha : a.im ≠ 0) (hr : r ≠ 0) : (a * b).re ≠ 0 := by
-  rw [hb]; simp [mul_ne_zero ha hr]
-lemma im_mul_of_eq_imag_left {a b : ℂ} {r : ℝ} (ha : a = Complex.mk 0 r) :
-    (a * b).im = r * b.re := by simp [ha]
-lemma im_mul_of_eq_imag_right {a b : ℂ} {r : ℝ} (hb : b = Complex.mk 0 r) :
-    (a * b).im = a.re * r := by simp [hb]
+lemma re_of_eq_ofReal {w : ℂ} {r : ℝ} (h : w = (r : ℂ)) : w.re = r := by rw [h, ofReal_re]
+lemma im_of_eq_ofReal {w : ℂ} {r : ℝ} (h : w = (r : ℂ)) : w.im = 0 := by rw [h, ofReal_im]
+lemma im_sub_of_eq_ofReal {u v : ℂ} {r : ℝ} (hv : v = (r : ℂ)) : (u - v).im = u.im := by simp [hv]
 
-lemma re_neg_I_mul (w : ℂ) : (-(I * w)).re = w.im := by simp
-lemma re_neg_mul_I (w : ℂ) : (-(w * I)).re = w.im := by simp
-lemma re_negI_mul (w : ℂ) : (-I * w).re = w.im := by simp
-lemma re_mul_negI (w : ℂ) : (w * -I).re = w.im := by simp
-lemma re_I_mul_neg (w : ℂ) : (I * -w).re = w.im := by simp
-lemma re_neg_mul_I' (w : ℂ) : (-w * I).re = w.im := by simp
-
-lemma re_neg_ne_zero {w : ℂ} (hw : w.re ≠ 0) : (-w).re ≠ 0 := by simpa using hw
-lemma im_neg_ne_zero {w : ℂ} (hw : w.im ≠ 0) : (-w).im ≠ 0 := by simpa using hw
-lemma re_I_mul_ne_zero {w : ℂ} (hw : w.im ≠ 0) : (I * w).re ≠ 0 := by simpa using hw
-lemma re_mul_I_ne_zero {w : ℂ} (hw : w.im ≠ 0) : (w * I).re ≠ 0 := by simpa using hw
-lemma im_conj_ne_zero {w : ℂ} (hw : w.im ≠ 0) : (conj w).im ≠ 0 := by simpa using hw
-lemma im_star_ne_zero {w : ℂ} (hw : w.im ≠ 0) : (star w).im ≠ 0 := by simpa using hw
 lemma re_star (w : ℂ) : (star w).re = w.re := by simp
-
-lemma im_sub_of_eq_ofReal {u v : ℂ} {r : ℝ} (hv : v = (r : ℂ)) : (u - v).im = u.im := by
-  simp [hv]
+lemma im_star (w : ℂ) : (star w).im = -w.im := by simp
 
 lemma re_mul_of_eq_ofReal_left {c w : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
     (c * w).re = r * w.re := by simp [hc]
@@ -123,100 +96,49 @@ lemma im_mul_of_eq_ofReal_left {c w : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
 lemma im_mul_of_eq_ofReal_right {w c : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
     (w * c).im = w.im * r := by simp [hc]
 
-lemma re_div_of_eq_ofReal {w c : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
-    (w / c).re = w.re / r := by simp [hc]
-lemma im_div_of_eq_ofReal {w c : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
-    (w / c).im = w.im / r := by simp [hc]
+lemma re_neg_mul_of_eq_imag_left {a b : ℂ} {r : ℝ} (ha : a = Complex.mk 0 r) :
+    (-(a * b)).re = r * b.im := by simp [ha]
+lemma re_neg_mul_of_eq_imag_right {a b : ℂ} {r : ℝ} (hb : b = Complex.mk 0 r) :
+    (-(a * b)).re = a.im * r := by simp [hb]
+lemma re_neg_left_mul_of_eq_imag_left {a b : ℂ} {r : ℝ} (ha : a = Complex.mk 0 r) :
+    (-a * b).re = r * b.im := by simp [ha]
+lemma re_neg_left_mul_of_eq_imag_right {a b : ℂ} {r : ℝ} (hb : b = Complex.mk 0 r) :
+    (-a * b).re = a.im * r := by simp [hb]
+lemma re_mul_neg_right_of_eq_imag_left {a b : ℂ} {r : ℝ} (ha : a = Complex.mk 0 r) :
+    (a * -b).re = r * b.im := by simp [ha]
+lemma re_mul_neg_right_of_eq_imag_right {a b : ℂ} {r : ℝ} (hb : b = Complex.mk 0 r) :
+    (a * -b).re = a.im * r := by simp [hb]
+lemma re_mul_of_eq_imag_left {a b : ℂ} {r : ℝ} (ha : a = Complex.mk 0 r) :
+    (a * b).re = -(r * b.im) := by simp [ha]
+lemma re_mul_of_eq_imag_right {a b : ℂ} {r : ℝ} (hb : b = Complex.mk 0 r) :
+    (a * b).re = -(a.im * r) := by simp [hb]
+lemma im_mul_of_eq_imag_left {a b : ℂ} {r : ℝ} (ha : a = Complex.mk 0 r) :
+    (a * b).im = r * b.re := by simp [ha]
+lemma im_mul_of_eq_imag_right {a b : ℂ} {r : ℝ} (hb : b = Complex.mk 0 r) :
+    (a * b).im = a.re * r := by simp [hb]
 
+lemma re_div_of_eq_ofReal {w c : ℂ} {r : ℝ} (hc : c = (r : ℂ)) : (w / c).re = w.re / r := by
+  simp [hc]
+lemma im_div_of_eq_ofReal {w c : ℂ} {r : ℝ} (hc : c = (r : ℂ)) : (w / c).im = w.im / r := by
+  simp [hc]
 lemma re_ofReal_div {c w : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
-    (c / w).re = r * w.re / normSq w := by
-  simp [hc, div_re]
-
+    (c / w).re = r * w.re / normSq w := by simp [hc, div_re]
 lemma im_neg_ofReal_div {c w : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
-    (-c / w).im = r * w.im / normSq w := by
-  simp [hc, div_im, neg_div]
-
+    (-c / w).im = r * w.im / normSq w := by simp [hc, div_im, neg_div]
 lemma im_neg_div_of_eq_ofReal {c w : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
-    (-(c / w)).im = r * w.im / normSq w := by
-  rw [← neg_div, im_neg_ofReal_div hc]
-
+    (-(c / w)).im = r * w.im / normSq w := by rw [← neg_div, im_neg_ofReal_div hc]
 lemma im_ofReal_div_neg {c w : ℂ} {r : ℝ} (hc : c = (r : ℂ)) :
-    (c / -w).im = r * w.im / normSq w := by
-  rw [div_neg, im_neg_div_of_eq_ofReal hc]
+    (c / -w).im = r * w.im / normSq w := by rw [div_neg, im_neg_div_of_eq_ofReal hc]
 
-lemma im_neg_inv_pos {w : ℂ} (hw : 0 < w.im) : 0 < (-w⁻¹).im := by
-  rw [neg_im, inv_im, neg_div, neg_neg]
-  exact div_pos hw (normSq_pos.mpr fun h => by simp [h] at hw)
-
-lemma im_neg_inv_nonneg {w : ℂ} (hw : 0 ≤ w.im) : 0 ≤ (-w⁻¹).im := by
-  rw [neg_im, inv_im, neg_div, neg_neg]
-  exact div_nonneg hw (normSq_nonneg w)
-
-lemma im_neg_inv_ne_zero {w : ℂ} (hw : w.im ≠ 0) : (-w⁻¹).im ≠ 0 := by
-  rw [neg_im, inv_im, neg_div, neg_neg]
-  exact div_ne_zero hw (normSq_pos.mpr fun h => hw (by simp [h])).ne'
-
-lemma re_inv_pos {w : ℂ} (hw : 0 < w.re) : 0 < w⁻¹.re := by
-  rw [inv_re]
-  exact div_pos hw (normSq_pos.mpr fun h => by simp [h] at hw)
-
-lemma re_inv_nonneg {w : ℂ} (hw : 0 ≤ w.re) : 0 ≤ w⁻¹.re := by
-  rw [inv_re]; exact div_nonneg hw (normSq_nonneg w)
-
-lemma re_inv_ne_zero {w : ℂ} (hw : w.re ≠ 0) : w⁻¹.re ≠ 0 := by
-  rw [inv_re]
-  exact div_ne_zero hw (normSq_pos.mpr fun h => hw (by simp [h])).ne'
-
-lemma im_inv_neg_pos {w : ℂ} (hw : 0 < w.im) : 0 < (-w)⁻¹.im := by
-  rw [inv_im, neg_im, neg_neg, normSq_neg]
-  exact div_pos hw (normSq_pos.mpr fun h => by simp [h] at hw)
-
-lemma im_inv_neg_nonneg {w : ℂ} (hw : 0 ≤ w.im) : 0 ≤ (-w)⁻¹.im := by
-  rw [inv_im, neg_im, neg_neg, normSq_neg]
-  exact div_nonneg hw (normSq_nonneg w)
-
-lemma im_inv_neg_ne_zero {w : ℂ} (hw : w.im ≠ 0) : (-w)⁻¹.im ≠ 0 := by
-  rw [inv_im, neg_im, neg_neg, normSq_neg]
-  exact div_ne_zero hw (normSq_pos.mpr fun h => hw (by simp [h])).ne'
-
-lemma im_inv_ne_zero {w : ℂ} (hw : w.im ≠ 0) : w⁻¹.im ≠ 0 := by
-  rw [inv_im]
-  exact div_ne_zero (neg_ne_zero.mpr hw) (normSq_pos.mpr fun h => hw (by simp [h])).ne'
+lemma im_inv_neg (w : ℂ) : (-w)⁻¹.im = w.im / normSq w := by simp [inv_im, neg_div]
+lemma im_neg_inv (w : ℂ) : (-w⁻¹).im = w.im / normSq w := by rw [neg_im, inv_im, neg_div, neg_neg]
+lemma im_inv_eq_neg (w : ℂ) : w⁻¹.im = -(w.im / normSq w) := by rw [inv_im, neg_div]
 
 lemma normSq_pos_of_ne_zero {w : ℂ} (hw : w ≠ 0) : 0 < normSq w := normSq_pos.mpr hw
 lemma normSq_pos_of_re_ne_zero {w : ℂ} (hw : w.re ≠ 0) : 0 < normSq w :=
   normSq_pos.mpr fun h => hw (by simp [h])
 lemma normSq_pos_of_im_ne_zero {w : ℂ} (hw : w.im ≠ 0) : 0 < normSq w :=
   normSq_pos.mpr fun h => hw (by simp [h])
-
-lemma mul_pos_of_eq {e a b : ℝ} (h : e = a * b) (ha : 0 < a) (hb : 0 < b) : 0 < e :=
-  h ▸ mul_pos ha hb
-lemma mul_nonneg_of_eq {e a b : ℝ} (h : e = a * b) (ha : 0 ≤ a) (hb : 0 ≤ b) : 0 ≤ e :=
-  h ▸ mul_nonneg ha hb
-lemma mul_ne_zero_of_eq {e a b : ℝ} (h : e = a * b) (ha : a ≠ 0) (hb : b ≠ 0) : e ≠ 0 :=
-  h ▸ mul_ne_zero ha hb
-
-lemma div_pos_of_eq {e a b : ℝ} (h : e = a / b) (ha : 0 < a) (hb : 0 < b) : 0 < e :=
-  h ▸ div_pos ha hb
-lemma div_nonneg_of_eq {e a b : ℝ} (h : e = a / b) (ha : 0 ≤ a) (hb : 0 ≤ b) : 0 ≤ e :=
-  h ▸ div_nonneg ha hb
-lemma div_ne_zero_of_eq {e a b : ℝ} (h : e = a / b) (ha : a ≠ 0) (hb : b ≠ 0) : e ≠ 0 :=
-  h ▸ div_ne_zero ha hb
-
-lemma add_pos_of_eq {e a b : ℝ} (h : e = a + b) (ha : 0 < a) (hb : 0 < b) : 0 < e :=
-  h ▸ add_pos ha hb
-lemma add_pos_of_pos_of_nonneg_of_eq {e a b : ℝ} (h : e = a + b) (ha : 0 < a) (hb : 0 ≤ b) :
-    0 < e :=
-  h ▸ add_pos_of_pos_of_nonneg ha hb
-lemma add_pos_of_nonneg_of_pos_of_eq {e a b : ℝ} (h : e = a + b) (ha : 0 ≤ a) (hb : 0 < b) :
-    0 < e :=
-  h ▸ add_pos_of_nonneg_of_pos ha hb
-lemma add_nonneg_of_eq {e a b : ℝ} (h : e = a + b) (ha : 0 ≤ a) (hb : 0 ≤ b) : 0 ≤ e :=
-  h ▸ add_nonneg ha hb
-
-lemma pos_of_eq_real {e r : ℝ} (h : e = r) (hr : 0 < r) : 0 < e := h ▸ hr
-lemma nonneg_of_eq_real {e r : ℝ} (h : e = r) (hr : 0 ≤ r) : 0 ≤ e := h ▸ hr
-lemma ne_zero_of_eq_real {e r : ℝ} (h : e = r) (hr : r ≠ 0) : e ≠ 0 := h ▸ hr
 
 lemma smul_re_nat (n : ℕ) (w : ℂ) : (n • w).re = (n : ℝ) * w.re := by simp [nsmul_eq_mul]
 lemma smul_im_nat (n : ℕ) (w : ℂ) : (n • w).im = (n : ℝ) * w.im := by simp [nsmul_eq_mul]
@@ -237,6 +159,10 @@ end Lemmas
 private meta abbrev RealStrictness (e : Q(ℝ)) :=
   Strictness (q(inferInstance) : Q(Zero ℝ)) e (some q(inferInstance))
 
+/-- Run `Positivity.core` on a real expression with standard `ℝ` instances, catching failures. -/
+private meta def coreReal (r : Q(ℝ)) : MetaM (RealStrictness r) :=
+  catchNone (core q(inferInstance) (some q(inferInstance)) r)
+
 /-- Adapt a `RealStrictness e'` into `Strictness zα e pα?` given `$α =Q ℝ` and `$e =Q $e'`. -/
 private meta def adaptRealStrictness {α : Q(Type)} {zα : Q(Zero $α)}
     {pα? : Option Q(PartialOrder $α)} {e : Q($α)} {e' : Q(ℝ)}
@@ -244,31 +170,25 @@ private meta def adaptRealStrictness {α : Q(Type)} {zα : Q(Zero $α)}
     MetaM (Strictness zα e pα?) := do
   assertInstancesCommute
   match h : pα?, res with
-  | some pα, .positive pf =>
-    assumeInstancesCommute
-    return h ▸ .positive (pα := pα) q($pf)
-  | some pα, .nonnegative pf =>
-    assumeInstancesCommute
-    return h ▸ .nonnegative (pα := pα) q($pf)
-  | _, .nonzero pf =>
-    return .nonzero q($pf)
-  | none, .positive pf =>
-    return .nonzero q(ne_of_gt $pf)
+  | some pα, .positive pf => assumeInstancesCommute; return h ▸ .positive (pα := pα) q($pf)
+  | some pα, .nonnegative pf => assumeInstancesCommute; return h ▸ .nonnegative (pα := pα) q($pf)
+  | _, .nonzero pf => return .nonzero q($pf)
+  | none, .positive pf => return .nonzero q(ne_of_gt $pf)
   | _, _ => return .none
 
-/-- Extract `w : ℂ` from `Complex.re w` or `Complex.im w`, handling both constant-application
-and primitive-projection (`Expr.proj`) forms. -/
-private meta def matchComplexProj? (e : Expr) (constName : Name) (idx : Nat) :
-    MetaM (Option Expr) := do
-  let e := e.consumeMData
-  if e.isAppOfArity constName 1 then
-    return some e.appArg!
-  match ← whnfR e with
-  | .proj ``Complex i w => if i == idx then return some w else return none
-  | e' =>
-    if e'.isAppOfArity constName 1 then
-      return some e'.appArg!
-    return none
+/-- Transfer strictness along `h : e = rhs` by delegating `rhs` to `Positivity.core`. -/
+private meta def evalViaEq {e rhs : Q(ℝ)} (h : Q($e = $rhs)) : MetaM (RealStrictness e) :=
+  return match ← coreReal rhs with
+  | .positive pf => .positive q(pos_of_eq_real $h $pf)
+  | .nonnegative pf => .nonnegative q(nonneg_of_eq_real $h $pf)
+  | .nonzero pf => .nonzero q(ne_zero_of_eq_real $h $pf)
+  | .none => .none
+
+/-- Prove `e ≠ 0` along `h : e = -rhs` whenever `Positivity.core` proves `rhs ≠ 0`. -/
+private meta def evalViaNegEq {e rhs : Q(ℝ)} (h : Q($e = -$rhs)) : MetaM (RealStrictness e) :=
+  return match (← coreReal rhs).toNonzero with
+  | some pf => .nonzero q(ne_zero_of_eq_neg $h $pf)
+  | none => .none
 
 /-- Syntactically recognize complex expressions that are coerced real numbers (including
 ring/field operations and powers built solely from real coercions and numerals), returning
@@ -276,22 +196,15 @@ ring/field operations and powers built solely from real coercions and numerals),
 private meta partial def extractReal? (c : Q(ℂ)) :
     MetaM (Option (Σ r : Q(ℝ), Q($c = ($r : ℂ)))) := do
   match c with
-  | ~q(Complex.ofReal $r) =>
-    return some ⟨r, q(rfl)⟩
-  | ~q(Nat.cast $n) =>
-    return some ⟨q(($n : ℝ)), q((Complex.ofReal_natCast $n).symm)⟩
-  | ~q(Int.cast $n) =>
-    return some ⟨q(($n : ℝ)), q((Complex.ofReal_intCast $n).symm)⟩
-  | ~q(Rat.cast $r) =>
-    return some ⟨q(($r : ℝ)), q((Complex.ofReal_ratCast $r).symm)⟩
-  | ~q(NNRat.cast $r) =>
-    return some ⟨q(($r : ℝ)), q((Complex.ofReal_nnratCast $r).symm)⟩
+  | ~q(Complex.ofReal $r) => return some ⟨r, q(rfl)⟩
+  | ~q(Nat.cast $n) => return some ⟨q(($n : ℝ)), q((Complex.ofReal_natCast $n).symm)⟩
+  | ~q(Int.cast $n) => return some ⟨q(($n : ℝ)), q((Complex.ofReal_intCast $n).symm)⟩
+  | ~q(Rat.cast $r) => return some ⟨q(($r : ℝ)), q((Complex.ofReal_ratCast $r).symm)⟩
+  | ~q(NNRat.cast $r) => return some ⟨q(($r : ℝ)), q((Complex.ofReal_nnratCast $r).symm)⟩
   | ~q(OfNat.ofNat $n (self := _)) =>
     let some n' := n.rawNatLit? | return none
-    if n' == 0 then
-      return some ⟨q((0 : ℝ)), (q(Complex.ofReal_zero.symm) :)⟩
-    else if n' == 1 then
-      return some ⟨q((1 : ℝ)), (q(Complex.ofReal_one.symm) :)⟩
+    if n' == 0 then return some ⟨q((0 : ℝ)), (q(Complex.ofReal_zero.symm) :)⟩
+    else if n' == 1 then return some ⟨q((1 : ℝ)), (q(Complex.ofReal_one.symm) :)⟩
     else
       let _i : Q(Nat.AtLeastTwo $n) ← synthInstanceQ q(Nat.AtLeastTwo $n)
       return some ⟨q(OfNat.ofNat $n), (q((Complex.ofReal_ofNat $n).symm) :)⟩
@@ -334,8 +247,7 @@ private meta partial def extractReal? (c : Q(ℂ)) :
 private meta partial def extractImag? (c : Q(ℂ)) :
     MetaM (Option (Σ r : Q(ℝ), Q($c = Complex.mk 0 $r))) := do
   match c with
-  | ~q(Complex.I) =>
-    return some ⟨q((1 : ℝ)), q(eq_imag_I)⟩
+  | ~q(Complex.I) => return some ⟨q((1 : ℝ)), q(eq_imag_I)⟩
   | ~q($a * $b) =>
     if let some ⟨r, ha⟩ ← extractReal? a then
       if let some ⟨ib, hb⟩ ← extractImag? b then
@@ -351,54 +263,130 @@ private meta partial def extractImag? (c : Q(ℂ)) :
     return none
   | _ => return none
 
-/-- Run `Positivity.core` on a real expression with standard `ℝ` instances, catching failures. -/
-private meta def coreReal (r : Q(ℝ)) : MetaM (RealStrictness r) :=
-  catchNone (core q(inferInstance) (some q(inferInstance)) r)
+/-- One-step sign-preserving algebraic reduction of `Complex.re w` to a real expression. -/
+private meta def simplifyRe? (w : Q(ℂ)) :
+    MetaM (Option (Σ r : Q(ℝ), Q(Complex.re $w = $r))) := do
+  if let some ⟨r, hr⟩ ← extractReal? w then
+    return some ⟨r, q(re_of_eq_ofReal $hr)⟩
+  -- Check `Complex.mk` syntactically so structure eta does not match every `w : ℂ`.
+  if w.isAppOfArity ``Complex.mk 2 then
+    have a : Q(ℝ) := w.appFn!.appArg!
+    have b : Q(ℝ) := w.appArg!
+    haveI' : $w =Q Complex.mk $a $b := ⟨⟩
+    return some ⟨a, q(rfl)⟩
+  match w with
+  | ~q(Complex.I) => return some ⟨q((0 : ℝ)), q(Complex.I_re)⟩
+  | ~q($a + $b) => return some ⟨q(Complex.re $a + Complex.re $b), q(Complex.add_re $a $b)⟩
+  | ~q(conj $a) => return some ⟨q(Complex.re $a), q(Complex.conj_re $a)⟩
+  | ~q(Star.star $a) => return some ⟨q(Complex.re $a), q(re_star $a)⟩
+  | ~q($a⁻¹) => return some ⟨q(Complex.re $a / Complex.normSq $a), q(Complex.inv_re $a)⟩
+  | ~q(@HSMul.hSMul ℝ ℂ ℂ _ $r $v) =>
+    return some ⟨q($r * Complex.re $v), q(smul_re_real $r $v)⟩
+  | ~q(@HSMul.hSMul ℕ ℂ ℂ _ $n $v) =>
+    return some ⟨q(($n : ℝ) * Complex.re $v), q(smul_re_nat $n $v)⟩
+  | ~q(@HSMul.hSMul ℤ ℂ ℂ _ $n $v) =>
+    return some ⟨q(($n : ℝ) * Complex.re $v), q(smul_re_int $n $v)⟩
+  | ~q(@HSMul.hSMul ℚ ℂ ℂ _ $r $v) =>
+    return some ⟨q(($r : ℝ) * Complex.re $v), q(smul_re_rat $r $v)⟩
+  | ~q(@HSMul.hSMul ℚ≥0 ℂ ℂ _ $r $v) =>
+    return some ⟨q(($r : ℝ) * Complex.re $v), q(smul_re_nnrat $r $v)⟩
+  | ~q(-($a * $b)) =>
+    if let some ⟨r, ha⟩ ← extractImag? a then
+      return some ⟨q($r * Complex.im $b), q(re_neg_mul_of_eq_imag_left $ha)⟩
+    if let some ⟨r, hb⟩ ← extractImag? b then
+      return some ⟨q((Complex.im $a) * $r), q(re_neg_mul_of_eq_imag_right $hb)⟩
+    return none
+  | ~q($a * $b) =>
+    if let some ⟨r, ha⟩ ← extractReal? a then
+      return some ⟨q($r * Complex.re $b), q(re_mul_of_eq_ofReal_left $ha)⟩
+    if let some ⟨r, hb⟩ ← extractReal? b then
+      return some ⟨q((Complex.re $a) * $r), q(re_mul_of_eq_ofReal_right $hb)⟩
+    match a with
+    | ~q(-$a') =>
+      if let some ⟨r, ha⟩ ← extractImag? a' then
+        return some ⟨q($r * Complex.im $b), q(re_neg_left_mul_of_eq_imag_left $ha)⟩
+      if let some ⟨r, hb⟩ ← extractImag? b then
+        return some ⟨q((Complex.im $a') * $r), q(re_neg_left_mul_of_eq_imag_right $hb)⟩
+      return none
+    | _ =>
+      match b with
+      | ~q(-$b') =>
+        if let some ⟨r, ha⟩ ← extractImag? a then
+          return some ⟨q($r * Complex.im $b'), q(re_mul_neg_right_of_eq_imag_left $ha)⟩
+        if let some ⟨r, hb⟩ ← extractImag? b' then
+          return some ⟨q((Complex.im $a) * $r), q(re_mul_neg_right_of_eq_imag_right $hb)⟩
+        return none
+      | _ => return none
+  | ~q($a / $b) =>
+    if let some ⟨r, hb⟩ ← extractReal? b then
+      return some ⟨q(Complex.re $a / $r), q(re_div_of_eq_ofReal $hb)⟩
+    if let some ⟨r, ha⟩ ← extractReal? a then
+      return some ⟨q($r * Complex.re $b / Complex.normSq $b), q(re_ofReal_div $ha)⟩
+    return none
+  | _ => return none
 
-/-- Transfer a `RealStrictness` result along an equality `e = r` in `ℝ`. -/
-private meta def liftEqReal {e r : Q(ℝ)} (eqPf : Q($e = $r))
-    (res : RealStrictness r) : RealStrictness e :=
-  match res with
-  | .positive pf => .positive q(pos_of_eq_real $eqPf $pf)
-  | .nonnegative pf => .nonnegative q(nonneg_of_eq_real $eqPf $pf)
-  | .nonzero pf => .nonzero q(ne_zero_of_eq_real $eqPf $pf)
-  | .none => .none
-
-/-- Combine two `RealStrictness` results for `e = a + b` in `ℝ`. -/
-private meta def combineAddReal {e a b : Q(ℝ)} (eqPf : Q($e = $a + $b))
-    (ra : RealStrictness a) (rb : RealStrictness b) : RealStrictness e :=
-  match ra, rb with
-  | .positive pa, .positive pb => .positive q(add_pos_of_eq $eqPf $pa $pb)
-  | .positive pa, .nonnegative pb => .positive q(add_pos_of_pos_of_nonneg_of_eq $eqPf $pa $pb)
-  | .nonnegative pa, .positive pb => .positive q(add_pos_of_nonneg_of_pos_of_eq $eqPf $pa $pb)
-  | .nonnegative pa, .nonnegative pb => .nonnegative q(add_nonneg_of_eq $eqPf $pa $pb)
-  | _, _ => .none
-
-/-- Combine two `RealStrictness` results for `e = a * b` in `ℝ`. -/
-private meta def combineMulReal {e a b : Q(ℝ)} (eqPf : Q($e = $a * $b))
-    (ra : RealStrictness a) (rb : RealStrictness b) : RealStrictness e :=
-  match ra.toPositive, rb.toPositive with
-  | some pa, some pb => .positive q(mul_pos_of_eq $eqPf $pa $pb)
-  | _, _ =>
-    match ra.toNonneg, rb.toNonneg with
-    | some pa, some pb => .nonnegative q(mul_nonneg_of_eq $eqPf $pa $pb)
-    | _, _ =>
-      match ra.toNonzero, rb.toNonzero with
-      | some pa, some pb => .nonzero q(mul_ne_zero_of_eq $eqPf $pa $pb)
-      | _, _ => .none
-
-/-- Combine two `RealStrictness` results for `e = a / b` in `ℝ`. -/
-private meta def combineDivReal {e a b : Q(ℝ)} (eqPf : Q($e = $a / $b))
-    (ra : RealStrictness a) (rb : RealStrictness b) : RealStrictness e :=
-  match ra.toPositive, rb.toPositive with
-  | some pa, some pb => .positive q(div_pos_of_eq $eqPf $pa $pb)
-  | _, _ =>
-    match ra.toNonneg, rb.toNonneg with
-    | some pa, some pb => .nonnegative q(div_nonneg_of_eq $eqPf $pa $pb)
-    | _, _ =>
-      match ra.toNonzero, rb.toNonzero with
-      | some pa, some pb => .nonzero q(div_ne_zero_of_eq $eqPf $pa $pb)
-      | _, _ => .none
+/-- One-step sign-preserving algebraic reduction of `Complex.im w` to a real expression. -/
+private meta def simplifyIm? (w : Q(ℂ)) :
+    MetaM (Option (Σ r : Q(ℝ), Q(Complex.im $w = $r))) := do
+  if let some ⟨_r, hr⟩ ← extractReal? w then
+    return some ⟨q((0 : ℝ)), q(im_of_eq_ofReal $hr)⟩
+  -- Check `Complex.mk` syntactically so structure eta does not match every `w : ℂ`.
+  if w.isAppOfArity ``Complex.mk 2 then
+    have a : Q(ℝ) := w.appFn!.appArg!
+    have b : Q(ℝ) := w.appArg!
+    haveI' : $w =Q Complex.mk $a $b := ⟨⟩
+    return some ⟨b, q(rfl)⟩
+  match w with
+  | ~q(Complex.I) => return some ⟨q((1 : ℝ)), q(Complex.I_im)⟩
+  | ~q($a + $b) => return some ⟨q(Complex.im $a + Complex.im $b), q(Complex.add_im $a $b)⟩
+  | ~q($a - $b) =>
+    if let some ⟨_r, hb⟩ ← extractReal? b then
+      return some ⟨q(Complex.im $a), q(im_sub_of_eq_ofReal $hb)⟩
+    return none
+  | ~q((-$a)⁻¹) => return some ⟨q(Complex.im $a / Complex.normSq $a), q(im_inv_neg $a)⟩
+  | ~q(-$a⁻¹) => return some ⟨q(Complex.im $a / Complex.normSq $a), q(im_neg_inv $a)⟩
+  | ~q(-($c / $b)) =>
+    if let some ⟨r, hc⟩ ← extractReal? c then
+      return some ⟨q($r * Complex.im $b / Complex.normSq $b), q(im_neg_div_of_eq_ofReal $hc)⟩
+    return none
+  | ~q(@HSMul.hSMul ℝ ℂ ℂ _ $r $v) =>
+    return some ⟨q($r * Complex.im $v), q(smul_im_real $r $v)⟩
+  | ~q(@HSMul.hSMul ℕ ℂ ℂ _ $n $v) =>
+    return some ⟨q(($n : ℝ) * Complex.im $v), q(smul_im_nat $n $v)⟩
+  | ~q(@HSMul.hSMul ℤ ℂ ℂ _ $n $v) =>
+    return some ⟨q(($n : ℝ) * Complex.im $v), q(smul_im_int $n $v)⟩
+  | ~q(@HSMul.hSMul ℚ ℂ ℂ _ $r $v) =>
+    return some ⟨q(($r : ℝ) * Complex.im $v), q(smul_im_rat $r $v)⟩
+  | ~q(@HSMul.hSMul ℚ≥0 ℂ ℂ _ $r $v) =>
+    return some ⟨q(($r : ℝ) * Complex.im $v), q(smul_im_nnrat $r $v)⟩
+  | ~q(Complex.I * $v) => return some ⟨q(Complex.re $v), q(Complex.I_mul_im $v)⟩
+  | ~q($v * Complex.I) => return some ⟨q(Complex.re $v), q(Complex.mul_I_im $v)⟩
+  | ~q($a * $b) =>
+    if let some ⟨r, ha⟩ ← extractReal? a then
+      return some ⟨q($r * Complex.im $b), q(im_mul_of_eq_ofReal_left $ha)⟩
+    if let some ⟨r, hb⟩ ← extractReal? b then
+      return some ⟨q((Complex.im $a) * $r), q(im_mul_of_eq_ofReal_right $hb)⟩
+    if let some ⟨r, ha⟩ ← extractImag? a then
+      return some ⟨q($r * Complex.re $b), q(im_mul_of_eq_imag_left $ha)⟩
+    if let some ⟨r, hb⟩ ← extractImag? b then
+      return some ⟨q((Complex.re $a) * $r), q(im_mul_of_eq_imag_right $hb)⟩
+    return none
+  | ~q($a / $b) =>
+    if let some ⟨r, hb⟩ ← extractReal? b then
+      return some ⟨q(Complex.im $a / $r), q(im_div_of_eq_ofReal $hb)⟩
+    match a with
+    | ~q(-$c) =>
+      if let some ⟨r, hc⟩ ← extractReal? c then
+        return some ⟨q($r * Complex.im $b / Complex.normSq $b), q(im_neg_ofReal_div $hc)⟩
+      return none
+    | _ =>
+      match b with
+      | ~q(-$d) =>
+        if let some ⟨r, ha⟩ ← extractReal? a then
+          return some ⟨q($r * Complex.im $d / Complex.normSq $d), q(im_ofReal_div_neg $ha)⟩
+        return none
+      | _ => return none
+  | _ => return none
 
 /-! ### `positivity` extensions -/
 
@@ -427,18 +415,15 @@ meta def evalOfNatNeZero : PositivityExt where eval {_u _α} _zα pα? e := do
 `ComplexOrder` is not open (`pα? = none`). -/
 @[positivity Complex.ofReal _]
 meta def evalComplexOfRealNeZero : PositivityExt where eval {u α} _zα pα? e := do
-  -- When `pα? = some _`, Mathlib's `evalComplexOfReal` handles `<`/`≤`/`≠`;
-  -- here we cover the `pα? = none` case (without `open scoped ComplexOrder`).
   match pα? with
   | some _ => return .none
   | none =>
     match u, α, e with
     | 0, ~q(ℂ), ~q(Complex.ofReal $r) =>
       assertInstancesCommute
-      match ← coreReal r with
-      | .positive pr => return .nonzero q(Complex.ofReal_ne_zero.mpr (ne_of_gt $pr))
-      | .nonzero pr => return .nonzero q(Complex.ofReal_ne_zero.mpr $pr)
-      | _ => return .none
+      match (← coreReal r).toNonzero with
+      | some pr => return .nonzero q(Complex.ofReal_ne_zero.mpr $pr)
+      | none => return .none
     | _, _, _ => return .none
 
 /-- Extension for the `positivity` tactic: `Complex.normSq z` is always nonnegative, and strictly
@@ -461,264 +446,45 @@ meta def evalComplexNormSq : PositivityExt where eval {u α} zα pα? e := do
     adaptRealStrictness (zα := zα) (pα? := pα?) (e := e) res
   | _, _, _ => return .none
 
-/-- Core structural positivity analysis for `Complex.re w`. -/
-private meta def evalComplexReCore (w : Q(ℂ)) : MetaM (RealStrictness q(Complex.re $w)) := do
-  -- 1. Purely real subexpressions (`ofReal`, casts, numerals, and real ring/field combinations)
-  if let some ⟨r, hr⟩ ← extractReal? w then
-    return liftEqReal q(re_of_eq_ofReal $hr) (← coreReal r)
-  -- 2. Literal `Complex.mk a b` (checked syntactically so structure eta does not match all `w : ℂ`)
-  if w.isAppOfArity ``Complex.mk 2 then
-    have a : Q(ℝ) := w.appFn!.appArg!
-    have b : Q(ℝ) := w.appArg!
-    haveI' : $w =Q Complex.mk $a $b := ⟨⟩
-    return liftEqReal q(rfl) (← coreReal a)
-  -- 3. Structural recursion on complex constructors and operations
-  match w with
-  | ~q(Complex.I) =>
-    return .nonnegative q(re_I_nonneg)
-  | ~q($a + $b) =>
-    return combineAddReal q(Complex.add_re $a $b)
-      (← coreReal q(Complex.re $a)) (← coreReal q(Complex.re $b))
-  | ~q(-(Complex.I * $v)) =>
-    return liftEqReal q(re_neg_I_mul $v) (← coreReal q(Complex.im $v))
-  | ~q(-($v * Complex.I)) =>
-    return liftEqReal q(re_neg_mul_I $v) (← coreReal q(Complex.im $v))
-  | ~q(-Complex.I * $v) =>
-    return liftEqReal q(re_negI_mul $v) (← coreReal q(Complex.im $v))
-  | ~q($v * -Complex.I) =>
-    return liftEqReal q(re_mul_negI $v) (← coreReal q(Complex.im $v))
-  | ~q(Complex.I * -$v) =>
-    return liftEqReal q(re_I_mul_neg $v) (← coreReal q(Complex.im $v))
-  | ~q(-$v * Complex.I) =>
-    return liftEqReal q(re_neg_mul_I' $v) (← coreReal q(Complex.im $v))
-  | ~q(Complex.I * $v) =>
-    if let some hv := (← coreReal q(Complex.im $v)).toNonzero then
-      return .nonzero q(re_I_mul_ne_zero $hv)
-    return .none
-  | ~q($v * Complex.I) =>
-    if let some hv := (← coreReal q(Complex.im $v)).toNonzero then
-      return .nonzero q(re_mul_I_ne_zero $hv)
-    return .none
-  | ~q(-($a * $b)) =>
-    if let some ⟨r, ha⟩ ← extractImag? a then
-      return combineMulReal q(re_neg_mul_of_eq_imag_left $ha)
-        (← coreReal r) (← coreReal q(Complex.im $b))
-    if let some ⟨r, hb⟩ ← extractImag? b then
-      return combineMulReal q(re_neg_mul_of_eq_imag_right $hb)
-        (← coreReal q(Complex.im $a)) (← coreReal r)
-    if let some hab := (← coreReal q(Complex.re ($a * $b))).toNonzero then
-      return .nonzero q(re_neg_ne_zero $hab)
-    return .none
-  | ~q(-$a) =>
-    if let some ha := (← coreReal q(Complex.re $a)).toNonzero then
-      return .nonzero q(re_neg_ne_zero $ha)
-    return .none
-  | ~q(conj $a) =>
-    return liftEqReal q(Complex.conj_re $a) (← coreReal q(Complex.re $a))
-  | ~q(Star.star $a) =>
-    return liftEqReal q(re_star $a) (← coreReal q(Complex.re $a))
-  | ~q(@HSMul.hSMul ℝ ℂ ℂ _ $r $v) =>
-    return combineMulReal q(smul_re_real $r $v)
-      (← coreReal r) (← coreReal q(Complex.re $v))
-  | ~q(@HSMul.hSMul ℕ ℂ ℂ _ $n $v) =>
-    return combineMulReal q(smul_re_nat $n $v)
-      (← coreReal q(($n : ℝ))) (← coreReal q(Complex.re $v))
-  | ~q(@HSMul.hSMul ℤ ℂ ℂ _ $n $v) =>
-    return combineMulReal q(smul_re_int $n $v)
-      (← coreReal q(($n : ℝ))) (← coreReal q(Complex.re $v))
-  | ~q(@HSMul.hSMul ℚ ℂ ℂ _ $r $v) =>
-    return combineMulReal q(smul_re_rat $r $v)
-      (← coreReal q(($r : ℝ))) (← coreReal q(Complex.re $v))
-  | ~q(@HSMul.hSMul ℚ≥0 ℂ ℂ _ $r $v) =>
-    return combineMulReal q(smul_re_nnrat $r $v)
-      (← coreReal q(($r : ℝ))) (← coreReal q(Complex.re $v))
-  | ~q($a * $b) =>
-    if let some ⟨r, ha⟩ ← extractReal? a then
-      return combineMulReal q(re_mul_of_eq_ofReal_left $ha)
-        (← coreReal r) (← coreReal q(Complex.re $b))
-    if let some ⟨r, hb⟩ ← extractReal? b then
-      return combineMulReal q(re_mul_of_eq_ofReal_right $hb)
-        (← coreReal q(Complex.re $a)) (← coreReal r)
-    return .none
-  | ~q($a / $b) =>
-    if let some ⟨r, hb⟩ ← extractReal? b then
-      return combineDivReal q(re_div_of_eq_ofReal $hb)
-        (← coreReal q(Complex.re $a)) (← coreReal r)
-    if let some ⟨r, ha⟩ ← extractReal? a then
-      let rRes ← coreReal r
-      let bRes ← coreReal q(Complex.re $b)
-      let normSqRes : RealStrictness q(Complex.normSq $b) :=
-        match bRes.toNonzero with
-        | some hb => .positive q(normSq_pos_of_re_ne_zero $hb)
-        | none => .nonnegative q(Complex.normSq_nonneg $b)
-      return combineDivReal q(re_ofReal_div $ha)
-        (combineMulReal q(rfl) rRes bRes) normSqRes
-    return .none
-  | ~q($a⁻¹) =>
-    match ← coreReal q(Complex.re $a) with
-    | .positive pf => return .positive q(re_inv_pos $pf)
-    | .nonnegative pf => return .nonnegative q(re_inv_nonneg $pf)
-    | .nonzero pf => return .nonzero q(re_inv_ne_zero $pf)
-    | .none => return .none
-  | _ => return .none
-
 /-- Extension for the `positivity` tactic: real part `Complex.re w` of a complex expression. -/
 @[positivity Complex.re _]
 meta def evalComplexRe : PositivityExt where eval {u α} zα pα? e := do
-  match u, α with
-  | 0, ~q(ℝ) =>
-    let some w ← matchComplexProj? e ``Complex.re 0 | return .none
-    have w : Q(ℂ) := w.consumeMData
-    haveI' : $e =Q Complex.re $w := ⟨⟩
-    adaptRealStrictness (zα := zα) (pα? := pα?) (e := e) (← evalComplexReCore w)
-  | _, _ => return .none
-
-/-- Core structural positivity analysis for `Complex.im w`. -/
-private meta def evalComplexImCore (w : Q(ℂ)) : MetaM (RealStrictness q(Complex.im $w)) := do
-  -- 1. Purely real subexpressions have imaginary part `0 ≥ 0`
-  if let some ⟨_r, hr⟩ ← extractReal? w then
-    return .nonnegative q(im_of_eq_ofReal_nonneg $hr)
-  -- 2. Literal `Complex.mk a b` (checked syntactically so structure eta does not match all `w : ℂ`)
-  if w.isAppOfArity ``Complex.mk 2 then
-    have a : Q(ℝ) := w.appFn!.appArg!
-    have b : Q(ℝ) := w.appArg!
-    haveI' : $w =Q Complex.mk $a $b := ⟨⟩
-    return liftEqReal q(rfl) (← coreReal b)
-  -- 3. Structural recursion on complex constructors and operations
-  match w with
-  | ~q(Complex.I) =>
-    return .positive q(im_I_pos)
-  | ~q($a + $b) =>
-    return combineAddReal q(Complex.add_im $a $b)
-      (← coreReal q(Complex.im $a)) (← coreReal q(Complex.im $b))
-  | ~q($a - $b) =>
-    if let some ⟨_r, hb⟩ ← extractReal? b then
-      return liftEqReal q(im_sub_of_eq_ofReal $hb) (← coreReal q(Complex.im $a))
-    return .none
-  | ~q(Complex.I * $v) =>
-    return liftEqReal q(Complex.I_mul_im $v) (← coreReal q(Complex.re $v))
-  | ~q($v * Complex.I) =>
-    return liftEqReal q(Complex.mul_I_im $v) (← coreReal q(Complex.re $v))
-  | ~q(-$a) =>
-    let res : RealStrictness q(Complex.im $w) ←
-      match a with
-      | ~q($c / $b) =>
-        if let some ⟨r, hc⟩ ← extractReal? c then
-          let rRes ← coreReal r
-          let bRes ← coreReal q(Complex.im $b)
-          let normSqRes : RealStrictness q(Complex.normSq $b) :=
-            match bRes.toNonzero with
-            | some hb => .positive q(normSq_pos_of_im_ne_zero $hb)
-            | none => .nonnegative q(Complex.normSq_nonneg $b)
-          pure <| combineDivReal q(im_neg_div_of_eq_ofReal $hc)
-            (combineMulReal q(rfl) rRes bRes) normSqRes
-        else pure .none
-      | ~q($b⁻¹) =>
-        match ← coreReal q(Complex.im $b) with
-        | .positive pf => pure (.positive q(im_neg_inv_pos $pf))
-        | .nonnegative pf => pure (.nonnegative q(im_neg_inv_nonneg $pf))
-        | .nonzero pf => pure (.nonzero q(im_neg_inv_ne_zero $pf))
-        | .none => pure .none
-      | _ => pure .none
-    match res with
-    | .none =>
-      if let some ha := (← coreReal q(Complex.im $a)).toNonzero then
-        return .nonzero q(im_neg_ne_zero $ha)
-      return .none
-    | _ => return res
-  | ~q(conj $a) =>
-    if let some ha := (← coreReal q(Complex.im $a)).toNonzero then
-      return .nonzero q(im_conj_ne_zero $ha)
-    return .none
-  | ~q(Star.star $a) =>
-    if let some ha := (← coreReal q(Complex.im $a)).toNonzero then
-      return .nonzero q(im_star_ne_zero $ha)
-    return .none
-  | ~q(@HSMul.hSMul ℝ ℂ ℂ _ $r $v) =>
-    return combineMulReal q(smul_im_real $r $v)
-      (← coreReal r) (← coreReal q(Complex.im $v))
-  | ~q(@HSMul.hSMul ℕ ℂ ℂ _ $n $v) =>
-    return combineMulReal q(smul_im_nat $n $v)
-      (← coreReal q(($n : ℝ))) (← coreReal q(Complex.im $v))
-  | ~q(@HSMul.hSMul ℤ ℂ ℂ _ $n $v) =>
-    return combineMulReal q(smul_im_int $n $v)
-      (← coreReal q(($n : ℝ))) (← coreReal q(Complex.im $v))
-  | ~q(@HSMul.hSMul ℚ ℂ ℂ _ $r $v) =>
-    return combineMulReal q(smul_im_rat $r $v)
-      (← coreReal q(($r : ℝ))) (← coreReal q(Complex.im $v))
-  | ~q(@HSMul.hSMul ℚ≥0 ℂ ℂ _ $r $v) =>
-    return combineMulReal q(smul_im_nnrat $r $v)
-      (← coreReal q(($r : ℝ))) (← coreReal q(Complex.im $v))
-  | ~q($a * $b) =>
-    if let some ⟨r, ha⟩ ← extractReal? a then
-      return combineMulReal q(im_mul_of_eq_ofReal_left $ha)
-        (← coreReal r) (← coreReal q(Complex.im $b))
-    if let some ⟨r, hb⟩ ← extractReal? b then
-      return combineMulReal q(im_mul_of_eq_ofReal_right $hb)
-        (← coreReal q(Complex.im $a)) (← coreReal r)
-    if let some ⟨r, ha⟩ ← extractImag? a then
-      return combineMulReal q(im_mul_of_eq_imag_left $ha)
-        (← coreReal r) (← coreReal q(Complex.re $b))
-    if let some ⟨r, hb⟩ ← extractImag? b then
-      return combineMulReal q(im_mul_of_eq_imag_right $hb)
-        (← coreReal q(Complex.re $a)) (← coreReal r)
-    return .none
-  | ~q($a / $b) =>
-    if let some ⟨r, hb⟩ ← extractReal? b then
-      return combineDivReal q(im_div_of_eq_ofReal $hb)
-        (← coreReal q(Complex.im $a)) (← coreReal r)
-    let res1 : RealStrictness q(Complex.im $w) ←
-      match a with
-      | ~q(-$a') =>
-        if let some ⟨r, ha⟩ ← extractReal? a' then
-          let rRes ← coreReal r
-          let bRes ← coreReal q(Complex.im $b)
-          let normSqRes : RealStrictness q(Complex.normSq $b) :=
-            match bRes.toNonzero with
-            | some hb => .positive q(normSq_pos_of_im_ne_zero $hb)
-            | none => .nonnegative q(Complex.normSq_nonneg $b)
-          pure <| combineDivReal q(im_neg_ofReal_div $ha)
-            (combineMulReal q(rfl) rRes bRes) normSqRes
-        else pure .none
-      | _ => pure .none
-    match res1 with
-    | .none =>
-      match b with
-      | ~q(-$b') =>
-        if let some ⟨r, ha⟩ ← extractReal? a then
-          let rRes ← coreReal r
-          let bRes ← coreReal q(Complex.im $b')
-          let normSqRes : RealStrictness q(Complex.normSq $b') :=
-            match bRes.toNonzero with
-            | some hb => .positive q(normSq_pos_of_im_ne_zero $hb)
-            | none => .nonnegative q(Complex.normSq_nonneg $b')
-          return combineDivReal q(im_ofReal_div_neg $ha)
-            (combineMulReal q(rfl) rRes bRes) normSqRes
-        return .none
-      | _ => return .none
-    | _ => return res1
-  | ~q((-$a)⁻¹) =>
-    match ← coreReal q(Complex.im $a) with
-    | .positive pf => return .positive q(im_inv_neg_pos $pf)
-    | .nonnegative pf => return .nonnegative q(im_inv_neg_nonneg $pf)
-    | .nonzero pf => return .nonzero q(im_inv_neg_ne_zero $pf)
-    | .none => return .none
-  | ~q($a⁻¹) =>
-    if let some ha := (← coreReal q(Complex.im $a)).toNonzero then
-      return .nonzero q(im_inv_ne_zero $ha)
-    return .none
-  | _ => return .none
+  match u, α, e with
+  | 0, ~q(ℝ), ~q(Complex.re $w) =>
+    let res : RealStrictness q(Complex.re $w) ← do
+      if let some ⟨r, hr⟩ ← simplifyRe? w then
+        evalViaEq (rhs := r) hr
+      else
+        match w with
+        | ~q(-$a) => evalViaNegEq q(Complex.neg_re $a)
+        | ~q($a * $b) =>
+          if let some ⟨_, ha⟩ ← extractImag? a then
+            evalViaNegEq q(re_mul_of_eq_imag_left $ha)
+          else if let some ⟨_, hb⟩ ← extractImag? b then
+            evalViaNegEq q(re_mul_of_eq_imag_right $hb)
+          else
+            pure .none
+        | _ => pure .none
+    adaptRealStrictness (zα := zα) (pα? := pα?) (e := e) res
+  | _, _, _ => return .none
 
 /-- Extension for the `positivity` tactic: imaginary part `Complex.im w` of a complex
 expression. -/
 @[positivity Complex.im _]
 meta def evalComplexIm : PositivityExt where eval {u α} zα pα? e := do
-  match u, α with
-  | 0, ~q(ℝ) =>
-    let some w ← matchComplexProj? e ``Complex.im 1 | return .none
-    have w : Q(ℂ) := w.consumeMData
-    haveI' : $e =Q Complex.im $w := ⟨⟩
-    adaptRealStrictness (zα := zα) (pα? := pα?) (e := e) (← evalComplexImCore w)
-  | _, _ => return .none
+  match u, α, e with
+  | 0, ~q(ℝ), ~q(Complex.im $w) =>
+    let res : RealStrictness q(Complex.im $w) ← do
+      if let some ⟨r, hr⟩ ← simplifyIm? w then
+        evalViaEq (rhs := r) hr
+      else
+        match w with
+        | ~q(-$a) => evalViaNegEq q(Complex.neg_im $a)
+        | ~q(conj $a) => evalViaNegEq q(Complex.conj_im $a)
+        | ~q(Star.star $a) => evalViaNegEq q(im_star $a)
+        | ~q($a⁻¹) => evalViaNegEq q(im_inv_eq_neg $a)
+        | _ => pure .none
+    adaptRealStrictness (zα := zα) (pα? := pα?) (e := e) res
+  | _, _, _ => return .none
 
 end Mathlib.Meta.Positivity

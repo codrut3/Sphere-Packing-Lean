@@ -44,19 +44,15 @@ lemma re_exp_ofReal_pos (x : ℝ) : 0 < (Complex.exp (x : ℂ)).re := by
 lemma im_exp_ofReal_nonneg (x : ℝ) : 0 ≤ (Complex.exp (x : ℂ)).im := by
   rw [Complex.exp_ofReal_im]
 
-/-- Extract `w : ℂ` from `Complex.re w` or `Complex.im w`, handling both constant-application
-and primitive-projection (`Expr.proj`) forms. -/
-private meta def matchComplexProjAux? (e : Expr) (constName : Name) (idx : Nat) :
-    MetaM (Option Expr) := do
-  let e := e.consumeMData
-  if e.isAppOfArity constName 1 then
-    return some e.appArg!
-  match ← whnfR e with
-  | .proj ``Complex i w => if i == idx then return some w else return none
-  | e' =>
-    if e'.isAppOfArity constName 1 then
-      return some e'.appArg!
-    return none
+/-- Return a `.positive` (or `.nonzero` if `pα? = none`) `Strictness` from a proof of `0 < e'`. -/
+private meta def strictnessOfRealPos {α : Q(Type)} {zα : Q(Zero $α)}
+    {pα? : Option Q(PartialOrder $α)} {e : Q($α)} {e' : Q(ℝ)}
+    (pf : Q(0 < $e')) (_ : $α =Q ℝ := ⟨⟩) (_ : $e =Q $e' := ⟨⟩) :
+    MetaM (Strictness zα e pα?) := do
+  assertInstancesCommute
+  match h : pα? with
+  | some pα => assumeInstancesCommute; return h ▸ .positive (pα := pα) q($pf)
+  | none => return h ▸ .nonzero q(($pf).ne')
 
 /-- Extension for the `positivity` tactic: `(z : ℂ) ≠ 0` for `z : ℍ`, even when `ComplexOrder`
 is not open (`pα? = none`). -/
@@ -80,32 +76,13 @@ meta def evalUpperHalfPlaneDenom : PositivityExt where eval {u α} _zα _ e := d
     return .nonzero q(UpperHalfPlane.denom_ne_zero $γ $z)
   | _, _, _ => return .none
 
-/-- Extension for the `positivity` tactic: `0 < (z : ℂ).im` for `z : ℍ`, and
-`0 ≤ (Complex.exp ↑x).im` for `x : ℝ`. -/
-@[positivity Complex.im _]
-meta def evalUpperHalfPlaneAndExpIm : PositivityExt where eval {u α} _zα pα? e := do
-  match u, α with
-  | 0, ~q(ℝ) =>
-    let some w ← matchComplexProjAux? e ``Complex.im 1 | return .none
-    have w : Q(ℂ) := w.consumeMData
-    haveI' : $e =Q Complex.im $w := ⟨⟩
-    assertInstancesCommute
-    match w with
-    | ~q(UpperHalfPlane.coe $z) =>
-      match h : pα? with
-      | some pα =>
-        assumeInstancesCommute
-        return h ▸ .positive (pα := pα) q(upperHalfPlane_coe_im_pos $z)
-      | none =>
-        return h ▸ .nonzero q((upperHalfPlane_coe_im_pos $z).ne')
-    | ~q(Complex.exp (Complex.ofReal $x)) =>
-      match h : pα? with
-      | some pα =>
-        assumeInstancesCommute
-        return h ▸ .nonnegative (pα := pα) q(im_exp_ofReal_nonneg $x)
-      | none => return .none
-    | _ => return .none
-  | _, _ => return .none
+/-- Extension for the `positivity` tactic: `0 < (z : ℂ).im` for `z : ℍ`. -/
+@[positivity Complex.im (UpperHalfPlane.coe _)]
+meta def evalUpperHalfPlaneCoeIm : PositivityExt where eval {u α} zα pα? e := do
+  match u, α, e with
+  | 0, ~q(ℝ), ~q(Complex.im (UpperHalfPlane.coe $z)) =>
+    strictnessOfRealPos (zα := zα) (pα? := pα?) (e := e) q(upperHalfPlane_coe_im_pos $z)
+  | _, _, _ => return .none
 
 /-- Extension for the `positivity` tactic: `Complex.exp w ≠ 0`. -/
 @[positivity Complex.exp _]
@@ -117,23 +94,23 @@ meta def evalComplexExpNeZero : PositivityExt where eval {u α} _zα _ e := do
   | _, _, _ => return .none
 
 /-- Extension for the `positivity` tactic: `0 < (Complex.exp ↑x).re` for `x : ℝ`. -/
-@[positivity Complex.re _]
-meta def evalComplexExpRe : PositivityExt where eval {u α} _zα pα? e := do
-  match u, α with
-  | 0, ~q(ℝ) =>
-    let some w ← matchComplexProjAux? e ``Complex.re 0 | return .none
-    have w : Q(ℂ) := w.consumeMData
-    haveI' : $e =Q Complex.re $w := ⟨⟩
-    assertInstancesCommute
-    match w with
-    | ~q(Complex.exp (Complex.ofReal $x)) =>
-      match h : pα? with
-      | some pα =>
-        assumeInstancesCommute
-        return h ▸ .positive (pα := pα) q(re_exp_ofReal_pos $x)
-      | none =>
-        return h ▸ .nonzero q((re_exp_ofReal_pos $x).ne')
-    | _ => return .none
-  | _, _ => return .none
+@[positivity Complex.re (Complex.exp _)]
+meta def evalComplexExpRe : PositivityExt where eval {u α} zα pα? e := do
+  match u, α, e with
+  | 0, ~q(ℝ), ~q(Complex.re (Complex.exp (Complex.ofReal $x))) =>
+    strictnessOfRealPos (zα := zα) (pα? := pα?) (e := e) q(re_exp_ofReal_pos $x)
+  | _, _, _ => return .none
+
+/-- Extension for the `positivity` tactic: `0 ≤ (Complex.exp ↑x).im` for `x : ℝ`. -/
+@[positivity Complex.im (Complex.exp _)]
+meta def evalComplexExpIm : PositivityExt where eval {u α} _zα pα? e := do
+  match h : pα? with
+  | none => return .none
+  | some pα =>
+    match u, α, e with
+    | 0, ~q(ℝ), ~q(Complex.im (Complex.exp (Complex.ofReal $x))) =>
+      assertInstancesCommute
+      return h ▸ .nonnegative (pα := pα) q(im_exp_ofReal_nonneg $x)
+    | _, _, _ => return .none
 
 end Mathlib.Meta.Positivity
